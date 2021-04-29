@@ -11,7 +11,7 @@ BERT multiclass classsification:
   - From: https://www.coursera.org/projects/sentiment-analysis-bert
 
 ------------------
-### Instruction
+### Instructions
 Download Enron Corpus here: https://www.cs.cmu.edu/~enron/
  - Save as `data/maildir` for data formatting to work  
 
