@@ -31,7 +31,7 @@ Running on EC2 Deep Learning AMI instance:
 Model performance and output:
 - Metrics by epoch (F1 score): `/bertron/models/model_output.txt`
   - Stopped after 2 (of 4) epochs (on ~69k records), trained for ~12 hours
-  - F1 Score on Test Holdout (Weighted): 0.862
+  - F1 Score on Test Holdout (Weighted): `0.862`
 - Sample predictions: `/notebooks/predict`
   - A few sample predictions at the end of the notebook (using epoch 1 model checkpoint)
 
