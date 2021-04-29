@@ -314,8 +314,8 @@ def main(batch_size=16, epochs=2):
 
     print('\npreparing to train BERT model')
     model_params = {
-        'batch_size': 64,
-        'epochs': 2,
+        'batch_size': 32,
+        'epochs': 3,
         'learning_rate': 1e-4,
         'epsilon': 1e-8
     }
