@@ -15,7 +15,8 @@ import pandas as pd
 import numpy as np
 import random
 from toolz import curry
-from tqdm.notebook import tqdm
+from tqdm import tqdm
+import sys
 
 from sklearn.model_selection import train_test_split
 
@@ -28,6 +29,8 @@ random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
+# be there GPUs?
+DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def f1_score_func(preds, labels):
@@ -85,7 +88,7 @@ def prepare_train(X):
         X.index.values,
         X['label'].values,
         test_size=0.15,
-        random_state=seed,
+        random_state=SEED,
         stratify=X['label'].values
     )
 
@@ -192,7 +195,26 @@ def evaluate(model, dataloader_test):
     return loss_test_avg, predictions, true_tests
 
 
-def train(model, dataset_train, dataset_test, label_dict, batch_size=16, epochs=2):
+def train(dataset_train, dataset_test, label_dict, model_params):
+    """
+
+    :param model:
+    :param dataset_train:
+    :param dataset_test:
+    :param label_dict:
+    :param batch_size:
+    :param epochs:
+    :return:
+    """
+
+    try:
+        batch_size = model_params['batch_size']
+        epochs = model_params['epochs']
+        lr = model_params['learning_rate']
+        eps = model_params['epsilon']
+    except KeyError as e:
+        raise Exception("Must include batch_size, epochs, learning_rate, and epsilon values"
+                        "when calling train()")
 
     # initiate model object
     model = BertForSequenceClassification.from_pretrained(
@@ -226,13 +248,11 @@ def train(model, dataset_train, dataset_test, label_dict, batch_size=16, epochs=
         num_training_steps=len(dataloader_train) * epochs
     )
 
-    # be there GPUs?
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model.to(device)
-
+    model.to(DEVICE)
 
     # train epochs
-    for epoch in tqdm(range(1, epochs + 1)):
+    print('\nis tqdm going to work to stdout?')
+    for epoch in tqdm(range(1, epochs + 1),  file=sys.stdout):
         model.train()
 
         loss_train_total = 0
@@ -261,7 +281,7 @@ def train(model, dataset_train, dataset_test, label_dict, batch_size=16, epochs=
 
             progress_bar.set_postfix({'training_loss': '{:.3f}'.format(loss.item() / len(batch))})
 
-        torch.save(model.state_dict(), f'../models/finetuned_BERT_epoch_{epoch}.model')
+        torch.save(model.state_dict(), f'models/finetuned_BERT_epoch_{epoch}.model')
 
         tqdm.write(f'\nEpoch {epoch}')
 
@@ -275,29 +295,42 @@ def train(model, dataset_train, dataset_test, label_dict, batch_size=16, epochs=
 
     return model
 
+# make these click args
+def main(batch_size=16, epochs=2):
+    """
 
-def main():
+    :param batch_size:
+    :param epochs:
+    :return:
+    """
 
-    X = X.read_parquet('../data/processed/X.parquet')
-    with open('../data/processed/labels.json', 'w') as f_in:
+    X = pd.read_parquet('../data/processed/X.parquet')
+    with open('../data/processed/labels.json', 'r') as f_in:
         label_dict = json.load(f_in)
 
+    print('\npreparing datasets')
     X, max_len = prepare_train(X)
     dataset_train, dataset_test = make_tokenizer(X, max_len)
 
-    batch_size=16
-    epochs=2
+    print('\npreparing to train BERT model')
+    model_params = {
+        'batch_size': 32,
+        'epochs': 2,
+        'learning_rate': 1e-5,
+        'epsilon': 1e-8
+    }
     model = train(
         dataset_train,
         dataset_test,
         label_dict,
-        batch_size=batch_size,
-        epochs=epochs
+        model_params
     )
 
+    print('\nmodel evaluation')
     _, predictions, true_tests = evaluate(model, dataloader_test)
     accuracy_per_class(predictions, true_tests)
 
 
+# invocation: python train_bert.py > model_output.txt
 if __name__ == '__main__':
     main()
