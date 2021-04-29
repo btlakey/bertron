@@ -167,16 +167,16 @@ def main():
     :return:
     """
 
-    # # read and format raw sent email files
-    # df = format_raw('sent')
-    #
-    # # write to disk
-    # df.to_parquet('../data/processed/emails.parquet')
+    # read and format raw sent email files
+    # this is pretty slow, done serially
+    df = format_raw('sent')
 
-    df = pd.read_parquet('../data/processed/emails.parquet')
+    # write to disk
+    df.to_parquet('../data/processed/emails.parquet')
+    # df = pd.read_parquet('../data/processed/emails.parquet')
 
     # prepare for training
-    X = format_train(df, subset_frac=.02)
+    X = format_train(df, subset_frac=1)
     X, label_dict = assign_labels(X)
 
     # write train-processed data to disk
