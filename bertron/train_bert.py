@@ -288,7 +288,7 @@ def train(dataset_train, dataset_test, label_dict, model_params):
         loss_train_avg = loss_train_total / len(dataloader_train)
         tqdm.write(f'Training loss: {loss_train_avg}')
 
-        test_loss, predictions, true_tests = evaluate(dataloader_test)
+        test_loss, predictions, true_tests = evaluate(model, dataloader_test)
         test_f1 = f1_score_func(predictions, true_tests)
         tqdm.write(f'Test loss: {test_loss}')
         tqdm.write(f'F1 Score (Weighted): {test_f1}')
@@ -326,7 +326,7 @@ def main(batch_size=16, epochs=2):
         model_params
     )
 
-    print('\nmodel evaluation')
+    print('\nfull model evaluation')
     _, predictions, true_tests = evaluate(model, dataloader_test)
     accuracy_per_class(predictions, true_tests)
 
