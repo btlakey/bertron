@@ -19,6 +19,7 @@ from tqdm import tqdm
 import sys
 
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import f1_score
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
@@ -106,7 +107,7 @@ def prepare_train(X):
     points = dict(zip(percents, lens))
 
     # set length to include 95% of all messages (~2000 characters)
-    max_len = points[0.95]
+    max_len = int(points[0.95])
     # overwrite 512 default tensor setting
     max_len = 512
 
@@ -221,7 +222,8 @@ def train(dataset_train, dataset_test, label_dict, model_params):
         "bert-base-uncased",
         num_labels=len(label_dict),
         output_attentions=False,
-        output_hidden_states=False
+        output_hidden_states=False,
+        # max_position_embeddings=max_len
     )
 
     # load train/test
@@ -304,6 +306,7 @@ def main(batch_size=16, epochs=2):
     :return:
     """
 
+    print('\npreparing dataset')
     X = pd.read_parquet('../data/processed/X.parquet')
     with open('../data/processed/labels.json', 'r') as f_in:
         label_dict = json.load(f_in)
@@ -315,7 +318,7 @@ def main(batch_size=16, epochs=2):
     print('\npreparing to train BERT model')
     model_params = {
         'batch_size': 32,
-        'epochs': 3,
+        'epochs': 4,
         'learning_rate': 1e-4,
         'epsilon': 1e-8
     }
@@ -325,10 +328,6 @@ def main(batch_size=16, epochs=2):
         label_dict,
         model_params
     )
-
-    print('\nfull model evaluation')
-    _, predictions, true_tests = evaluate(model, dataloader_test)
-    accuracy_per_class(predictions, true_tests)
 
 
 # invocation: python train_bert.py > model_output.txt
