@@ -17,7 +17,8 @@ Download Enron Corpus here: https://www.cs.cmu.edu/~enron/
 
 Then run `bertron/format_data.py` to generate processed data sets  
 Then run `bertron/train_bert.py > bertron/models/model_output.txt` to see some results!
-- n.b.: still a work in progress
+Gotta add the predict endpoint!  `bertron/predict.py` does not yet exist...
+- Some working predict code in `notebooks/predict`
 
 ------------------
 ### Environment
@@ -29,12 +30,12 @@ Running on EC2 Deep Learning AMI instance:
 ------------------
 ### Results
 Model performance and output:
-- Metrics by epoch (F1 score): `/bertron/models/model_output.txt`
+- Metrics by epoch (F1 score): `bertron/models/model_output.txt`
   - Stopped after 2 (of 4) epochs (on ~69k records), trained for ~12 hours
   - F1 Score on Test Holdout (Weighted)
     - Epoch 1: `0.824`
     - Epoch 2: `0.862`
-- Sample predictions: `/notebooks/predict`
+- Sample predictions: `notebooks/predict`
   - A few sample predictions at the end of the notebook (using epoch 1 model checkpoint)
 
 ------------------
