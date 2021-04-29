@@ -16,9 +16,10 @@ Download Enron Corpus here: https://www.cs.cmu.edu/~enron/
 
 Then run `bertron/format_data.py` to generate processed data sets  
 Then run `bertron/train_bert.py > bertron/models/model_output.txt` to see some results!
+- n.b.: still a work in progress
 
 ------------------
 Running on EC2 Deep Learning AMI instance:  
-- c5.12xlarge, "advanced CPU compute-intensive workloads" (only because they wouldn't requisition any GPUs to me: g3.4xlarge)  
+- `c5.12xlarge`, "advanced CPU compute-intensive workloads" (only because they wouldn't requisition any GPUs to me: `g3.4xlarge`)  
 - PyTorch 1.7.1 with Python3.7 (CUDA 11.1 and Intel MKL)  
 - https://docs.aws.amazon.com/dlami/latest/devguide/what-is-dlami.html  
