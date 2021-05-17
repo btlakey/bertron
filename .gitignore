@@ -6,3 +6,6 @@ data/
 
 # PyCharm IDE files
 .idea/
+
+# model objects (large files)
+bertron/models/*.model
