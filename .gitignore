@@ -1,4 +1,4 @@
-# training dta
+# training data
 data/
 
 # Jupyter Notebook checkpoints
@@ -9,3 +9,6 @@ data/
 
 # model objects (large files)
 bertron/models/*.model
+
+# Python cached files
+bertron/__pycache__/
