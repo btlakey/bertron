@@ -14,4 +14,4 @@ bertron/models/*.model
 bertron/__pycache__/
 
 # local module info
-*.egg-info/
+/berton.egg-info/
