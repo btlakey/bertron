@@ -6,8 +6,7 @@ import json
 
 
 def format_email(data, fields=['To', 'X-To', 'From', 'X-From', 'cc', 'X-cc', 'Subject', 'Body']):
-    """
-    Given a plain text email file, return a dictionary of key:value pairs according to
+    """ Given a plain text email file, return a dictionary of key:value pairs according to
     fields specified in function arg call
 
     :param data: str
@@ -63,12 +62,15 @@ def format_email(data, fields=['To', 'X-To', 'From', 'X-From', 'cc', 'X-cc', 'Su
 
 
 def format_raw(subdir):
-    """
+    """ Within the Enron corpus, specify a type of email from among possible subdirectories,
+    and return a pandas dataframe of email subfields
 
     :param subdir: str
         subdirectory of email files
 
     :return: pandas.DataFrame
+        dataframe with each record being an email, and each column being a field specified in
+        the format_email() invocation
     """
     f_paths = []
 
@@ -91,14 +93,17 @@ def format_raw(subdir):
 
     print(f'emails processed: {len(emails)}')
 
-    df = pd.DataFrame(emails).dropna()
-    return df
+    return pd.DataFrame(emails).dropna()
+
 
 def format_names(x):
-    """
+    """ Given a string of recipients, extract the username for each
 
-    :param x:
-    :return:
+    :param x: str
+        string of email recipients (comma-delimited)
+
+    :return: list
+        list of strings, with each string being the username (preceding @ symbol)
     """
     return [y.split('@')[0] for y in x.strip().split(',')]
 
@@ -106,9 +111,15 @@ def format_names(x):
 def assign_labels(X, proportion=0.67):
     """
 
-    :param X:
-    :param proportion:
-    :return:
+    :param X: pandas.DataFrame
+        email dataframe containing 'author' field
+    :param proportion: float
+        float between 0-1: proportion of emails to represent in data set by top n
+        authors by number of sent emails
+
+    :return: (pandas.DataFrame, dict)
+        email dataframe with numerical labels for each author
+        dict mapping numerical labels to author
     """
 
     vc = X['author'].value_counts()
@@ -133,12 +144,18 @@ def assign_labels(X, proportion=0.67):
     return X, label_dict
 
 
-def format_train(df, subset_frac=1):
-    """
+def format_train(df, subset_frac=1.):
+    """ Given a dataframe of all possible email fields, format for author
+    assignment modeling
 
-    :param df:
-    :param subset_frac:
-    :return:
+    :param df: pandas.DataFrame
+        full email dataframe (output of format_raw())
+    :param subset_frac: float
+        between 0-1, proportion of email records to return (smaller values for
+        testing pipeline)
+
+    :return: pandas.DataFrame
+        dataframe containing ['author', 'recip_primary', 'subject', 'body'] fields
     """
 
     df = df.assign(recip=df['To'].apply(format_names),
@@ -162,9 +179,7 @@ def format_train(df, subset_frac=1):
 
 
 def main():
-    """
-
-    :return:
+    """ main invocation
     """
 
     # read and format raw sent email files

@@ -1,13 +1,11 @@
 """
 authorship assignment papers:
-
 http://publications.idiap.ch/downloads/papers/2020/Fabien_ICON2020_2020.pdf
 https://link.springer.com/content/pdf/10.1007%2F978-3-540-30115-8_22.pdf
 bert multiclass classsification:
 
 https://towardsdatascience.com/multi-class-text-classification-with-deep-learning-using-bert-b59ca2f5c613
 from: https://www.coursera.org/projects/sentiment-analysis-bert
-
 """
 
 import json
@@ -23,7 +21,9 @@ from sklearn.metrics import f1_score
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
-from transformers import BertTokenizer, BertForSequenceClassification, AdamW, get_linear_schedule_with_warmup
+from transformers import (
+    BertTokenizer, BertForSequenceClassification, AdamW, get_linear_schedule_with_warmup
+)
 
 SEED = 666
 random.seed(SEED)
@@ -35,31 +35,42 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def f1_score_func(preds, labels):
-    """
+    """calculate f1 score given nested numpy arrays
 
-    :param preds:
-    :param labels:
-    :return:
+    :param preds: numpy.ndarray
+        predictions, dim=()
+    :param labels: numpy.ndarray
+        truth values, dim()
+
+    :return: float
+        f1 score
     """
     preds_flat = np.argmax(preds, axis=1).flatten()
     labels_flat = labels.flatten()
     return f1_score(labels_flat, preds_flat, average='weighted')
 
 
-def accuracy_per_class(preds, labels):
-    """
+def accuracy_per_class(preds, labels, label_dict):
+    """ class (author) accuracy (proportion true predictions: tp+tn / tp+tn+fp+fn)
 
-    :param preds:
-    :param labels:
-    :return:
+    :param preds: numpy.ndarray
+        predictions, dim=()
+    :param labels: numpy.ndarray
+        truth values, dim()
+    :param label_dict: dict
+        mapping between authors (key) and int labels (value)
+
+    :return: None
+        print class accuracy metrics
     """
     label_dict_inverse = {v: k for k, v in label_dict.items()}
     preds_flat = np.argmax(preds, axis=1).flatten()
     labels_flat = labels.flatten()
 
     for label in np.unique(labels_flat):
-        y_preds = preds_flat[labels_flat == label]
-        y_true = labels_flat[labels_flat == label]
+        label_mask = labels_flat == label
+        y_preds = preds_flat[label_mask]
+        y_true = labels_flat[label_mask]
         print(f'Class: {label_dict_inverse[label]}')
         print(f'Accuracy: {len(y_preds[y_preds == label])} / {len(y_true)}\n')
 
@@ -77,11 +88,47 @@ def input_dict(batch):
     }
 
 
-def prepare_train(X):
+def sequence_len(srs, max_len_prop=0.95):
+    """ Return max_seq_len for training, with the aim of truncating only (1-max_len_prop)
+    Currently set to max_len = 512 as a result of pretrained BERT model
+
+    :param srs: pandas.Series
+        series of input text
+    :param max_len_prop: float
+        between 0-1, what proportion of records should not be trimmed
+
+    :return: int
+        max_len for text sequences
     """
 
-    :param X:
-    :return:
+    # determine default sequence lengths
+    vc = srs.apply(len).value_counts().sort_index()
+
+    # find how many characters are required to account for each proportion of recrods
+    percents = [.9, .95, .98, .99]
+    cs = map(lambda x: vc.cumsum() < vc.sum() * x, percents)
+
+    lens = [vc[~i].index.min() for i in cs]
+    points = dict(zip(percents, lens))
+
+    # set length to include 95% of all messages (~2000 characters)
+    max_len = int(points[max_len_prop])
+
+    # TODO: overwrite 512 default tensor setting, ths comes from pretrained BERT model
+    max_len = 512
+
+    return max_len
+
+
+def prepare_train(X):
+    """ Trim input text to max_len and designate train/test
+
+    :param X: pandas.DataFrame
+        dataframe, read from disk as output of format_data.py
+
+    :return: pandas.DataFrame
+        input dataframe, with additional 'data_type' column specifying train/test (stratified
+        on label='author') and 'body' text field trimmed to max_len
     """
 
     # stratified train/test split
@@ -98,28 +145,26 @@ def prepare_train(X):
     X.loc[X_train, 'data_type'] = 'train'
     X.loc[X_test, 'data_type'] = 'test'
 
-    # determine default sequence lengths
-    vc = X['body'].apply(len).value_counts().sort_index()
-    percents = [.9, .95, .98, .99]
-    cs = map(lambda x: vc.cumsum() < vc.sum() * x, percents)
-
-    lens = [vc[~i].index.min() for i in cs]
-    points = dict(zip(percents, lens))
-
-    # set length to include 95% of all messages (~2000 characters)
-    max_len = int(points[0.95])
-    # overwrite 512 default tensor setting
-    max_len = 512
+    max_len = sequence_len(X['body'])
 
     return X, max_len
 
 
-def make_tokenizer(X, max_len):
-    """
+def tokenize_data(X, max_len):
+    """ Tokenize input data and return tokenized tensor datasets
+    Uses pretrained 'bert-base-uncased' from transformers library
 
-    :param X:
-    :param max_len:
-    :return:
+    :param X: pandas.DataFrame
+        input dataframe with 'body' field designating input text and 'data_type' field
+        designating train/test records
+    :param max_len: int
+        max_len for input sequences
+
+    :return: (
+        torch.utils.data.dataset.TensorDataset,
+        torch.utils.data.dataset.TensorDataset
+    )
+        train and test torch tensor datasets
     """
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
@@ -161,11 +206,17 @@ def make_tokenizer(X, max_len):
 
 
 def evaluate(model, dataloader_test):
-    """
+    """ Given a pass over an epoch, report out-of-sample test metrics
 
-    :param model:
-    :param dataloader_test:
-    :return:
+    :param model: transformers.models.bert.modeling_bert.BertForSequenceClassification
+        fine-tuned BERT sequence classifier
+    :param dataloader_test: torch.utils.data.dataloader.DataLoader
+        iterable over test TensorDataset
+
+    :return: (float, numpy.ndarray, numpy.ndarray)
+        loss_test_avg: average loss over test records
+        predictions: array of predicted labels
+        true_tests: array or truth labels
     """
     model.eval()
 
@@ -197,15 +248,21 @@ def evaluate(model, dataloader_test):
 
 
 def train(dataset_train, dataset_test, label_dict, model_params):
-    """
+    """ Fine-tune a BERT sequence classifier for author attribution using the Enron corpus
 
-    :param model:
-    :param dataset_train:
-    :param dataset_test:
-    :param label_dict:
-    :param batch_size:
-    :param epochs:
-    :return:
+    :param model: transformers.models.bert.modeling_bert.BertForSequenceClassification
+        pretrained model from transformers library for finetunig
+    :param dataset_train: torch.utils.data.dataset.TensorDataset
+        map-style train tensor dataset, output of tokenize_data()
+    :param dataset_test: torch.utils.data.dataset.TensorDataset
+        map-style test tensor dataset, output of tokenize_data()
+    :param label_dict: dict
+        dictionary mapping numeric labels to authors
+    :param batch_size: int
+    :param epochs: int
+
+    :return: transformers.models.bert.modeling_bert.BertForSequenceClassification
+        fine-tuned BERT sequence classifier
     """
 
     try:
@@ -283,6 +340,7 @@ def train(dataset_train, dataset_test, label_dict, model_params):
 
             progress_bar.set_postfix({'training_loss': '{:.3f}'.format(loss.item() / len(batch))})
 
+        # periodic saves
         torch.save(model.state_dict(), f'models/finetuned_BERT_epoch_{epoch}.model')
 
         tqdm.write(f'\nEpoch {epoch}')
@@ -297,13 +355,15 @@ def train(dataset_train, dataset_test, label_dict, model_params):
 
     return model
 
-# make these click args
-def main(batch_size=16, epochs=2):
-    """
 
-    :param batch_size:
-    :param epochs:
-    :return:
+#TODO: make these click args
+def main(batch_size=32, epochs=4):
+    """ main invocation
+
+    :param batch_size: int
+    :param epochs: int
+    :return: None
+        saved model to disk
     """
 
     print('\npreparing dataset')
@@ -313,12 +373,12 @@ def main(batch_size=16, epochs=2):
 
     print('\npreparing datasets')
     X, max_len = prepare_train(X)
-    dataset_train, dataset_test = make_tokenizer(X, max_len)
+    dataset_train, dataset_test = tokenize_data(X, max_len)
 
     print('\npreparing to train BERT model')
     model_params = {
-        'batch_size': 32,
-        'epochs': 4,
+        'batch_size': batch_size,
+        'epochs': epochs,
         'learning_rate': 1e-4,
         'epsilon': 1e-8
     }
@@ -328,6 +388,8 @@ def main(batch_size=16, epochs=2):
         label_dict,
         model_params
     )
+
+    torch.save(model.state_dict(), f'models/finetuned_BERT_final.model')
 
 
 # invocation: python train_bert.py > model_output.txt
