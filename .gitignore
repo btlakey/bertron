@@ -12,3 +12,6 @@ bertron/models/*.model
 
 # Python cached files
 bertron/__pycache__/
+
+# local module info
+*.egg-info/
