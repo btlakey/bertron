@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: bertron
+Version: 0.0.1
+Summary: (toy) BERT authorship assignment against Enron Corpus
+Home-page: https://github.com/btlakey/bertron
+Author: blakey
+Author-email: brianlakey@gmail.com
+License: UNKNOWN
+Description: UNKNOWN
+Platform: UNKNOWN

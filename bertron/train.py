@@ -17,7 +17,6 @@ from tqdm import tqdm
 import sys
 
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader, RandomSampler, SequentialSampler
@@ -25,61 +24,24 @@ from transformers import (
     BertTokenizer, BertForSequenceClassification, AdamW, get_linear_schedule_with_warmup
 )
 
+from bertron.utils import be_there_gpus
+
 SEED = 666
 random.seed(SEED)
 np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed_all(SEED)
-# be there GPUs?
-DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-
-def f1_score_func(preds, labels):
-    """calculate f1 score given nested numpy arrays
-
-    :param preds: numpy.ndarray
-        predictions, dim=()
-    :param labels: numpy.ndarray
-        truth values, dim()
-
-    :return: float
-        f1 score
-    """
-    preds_flat = np.argmax(preds, axis=1).flatten()
-    labels_flat = labels.flatten()
-    return f1_score(labels_flat, preds_flat, average='weighted')
-
-
-def accuracy_per_class(preds, labels, label_dict):
-    """ class (author) accuracy (proportion true predictions: tp+tn / tp+tn+fp+fn)
-
-    :param preds: numpy.ndarray
-        predictions, dim=()
-    :param labels: numpy.ndarray
-        truth values, dim()
-    :param label_dict: dict
-        mapping between authors (key) and int labels (value)
-
-    :return: None
-        print class accuracy metrics
-    """
-    label_dict_inverse = {v: k for k, v in label_dict.items()}
-    preds_flat = np.argmax(preds, axis=1).flatten()
-    labels_flat = labels.flatten()
-
-    for label in np.unique(labels_flat):
-        label_mask = labels_flat == label
-        y_preds = preds_flat[label_mask]
-        y_true = labels_flat[label_mask]
-        print(f'Class: {label_dict_inverse[label]}')
-        print(f'Accuracy: {len(y_preds[y_preds == label])} / {len(y_true)}\n')
+DEVICE = be_there_gpus()
 
 
 def input_dict(batch):
-    """
+    """ dictify input data
 
-    :param batch:
-    :return:
+    :param batch: list
+        list of input ids, attention masks, and labels; output of tokenize_data
+
+    :return: dict
+        convert input list to input dict with key:value pairs
     """
     return {
         'input_ids': batch[0],
@@ -392,6 +354,6 @@ def main(batch_size=32, epochs=4):
     torch.save(model.state_dict(), f'models/finetuned_BERT_final.model')
 
 
-# invocation: python train_bert.py > model_output.txt
+# invocation: python train.py > model_output.txt
 if __name__ == '__main__':
     main()

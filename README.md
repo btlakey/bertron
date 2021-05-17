@@ -16,7 +16,7 @@ Download Enron Corpus here: https://www.cs.cmu.edu/~enron/
  - Save as `data/maildir` for data formatting to work  
 
 Then run `bertron/format_data.py` to generate processed data sets  
-Then run `bertron/train_bert.py > bertron/models/model_output.txt` to see some results!  
+Then run `bertron/train.py > bertron/models/model_output.txt` to see some results!  
 Gotta add the predict endpoint!  `bertron/predict.py` does not yet exist... (some working predict code in `notebooks/predict`)  
 
 ------------------
